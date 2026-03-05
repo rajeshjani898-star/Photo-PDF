@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NeonTrade Mobile - Green Protocol</title>
+    
+    <!-- External Assets -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --neon-green: #00ff55;
+            --neon-lime: #ccff00;
+            --dark-bg: #000000;
+            --glass: rgba(0, 255, 85, 0.08);
+            --border: rgba(0, 255, 85, 0.3);
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            background-image: radial-gradient(circle at top right, #0a200a, #000);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding-bottom: 70px; /* Space for mobile nav */
+            overflow-x: hidden;
+        }
+
+        .rajdhani { font-family: 'Rajdhani', sans-serif; text-transform: uppercase; }
+        
+        /* Glassmorphism Components */
+        .glass-panel {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .neon-text { color: var(--neon-green); text-shadow: 0 0 10px rgba(0, 255, 85, 0.5); }
+        .neon-btn-buy { background: var(--neon-green); color: #000; font-weight: 700; border: none; }
+        .neon-btn-sell { background: #ff3333; color: #fff; font-weight: 700; border: none; }
+
+        /* Mobile Chart Height */
+        #chart-wrapper { height: 280px; width: 100%; position: relative; }
+
+        /* Navigation Bar */
+        .mobile-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            z-index: 1000;
+        }
+        .nav-item { color: #555; text-decoration: none; text-align: center; font-size: 0.7rem; }
+        .nav-item.active { color: var(--neon-green); }
+        .nav-item i { font-size: 1.4rem; display: block; }
+
+        /* Loading Overlay */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Wallet Specifics */
+        .balance-card { border-left: 5px solid var(--neon-green); }
+        .step-num { 
+            width: 25px; height: 25px; background: var(--neon-green); color: #000; 
+            border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+            font-weight: bold; margin-right: 10px; font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Startup Animation -->
+    <div id="loading-screen">
+        <div class="spinner-border text-success mb-3" role="status"></div>
+        <h2 class="rajdhani neon-text">NEON TRADE</h2>
+        <span class="text-secondary small">SECURE PROTOCOL V7.1</span>
+    </div>
+
+    <!-- Top Header -->
+    <header class="p-3 d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="rajdhani m-0">Protocol <span class="neon-text">Green</span></h5>
+            <small class="text-secondary" style="font-size: 0.6rem;">ID: 0x992...71B</small>
+        </div>
+        <div id="ai-badge" class="badge rounded-pill border border-secondary text-secondary">
+            <i class="bi bi-cpu"></i> AI: OFF
+        </div>
+    </header>
+
+    <!-- MAIN VIEWS -->
+    <div class="container-fluid">
+        
+        <!-- 1. TRADE VIEW -->
+        <section id="view-trade" class="view-section active">
+            <div class="glass-panel text-center mb-3">
+                <small class="text-secondary text-uppercase">BTC/USDT Market</small>
+                <h2 class="rajdhani neon-text mb-0" id="live-price">65,420.00</h2>
+            </div>
+
+            <div id="chart-wrapper" class="glass-panel">
+                <canvas id="mainChart"></canvas>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <button class="btn btn-dark w-100 border-secondary small py-2" onclick="setTradeAmt(100)">₹100</button>
+                </div>
+                <div class="col-6">
+                    <button class="btn btn-dark w-100 border-secondary small py-2" onclick="setTradeAmt(500)">₹500</button>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-6">
+                    <button class="btn neon-btn-buy w-100 py-3" onclick="executeOrder('BUY')">
+                        <i class="bi bi-graph-up-arrow"></i> LONG
+                    </button>
+                </div>
+                <div class="col-6">
+                    <button class="btn neon-btn-sell w-100 py-3" onclick="executeOrder('SELL')">
+                        <i class="bi bi-graph-down-arrow"></i> SHORT
+                    </button>
+                </div>
+            </div>
+            
+            <div id="active-orders" class="mt-4"></div>
+        </section>
+
+        <!-- 2. WALLET VIEW -->
+        <section id="view-wallet" class="view-section">
+            <div class="glass-panel balance-card mb-4" data-aos="fade-right">
+                <p class="text-secondary small mb-1">CURRENT BALANCE</p>
+                <h1 class="rajdhani display-5" id="wallet-balance">₹0</h1>
+            </div>
+
+            <h5 class="rajdhani mb-3 text-success"><i class="bi bi-plus-square"></i> Deposit Money</h5>
+            
+            <div class="glass-panel border-success mb-3">
+                <div class="mb-3">
+                    <p class="small mb-2"><span class="step-num">1</span> Enter Amount & Pay</p>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text bg-dark border-secondary text-success">₹</span>
+                        <input type="number" id="deposit-input" class="form-control bg-dark text-white border-secondary" placeholder="Amount">
+                    </div>
+                    <a href="https://www.instamojo.com/@rajeshjani121/" target="_blank" class="btn btn-outline-success w-100 btn-sm">
+                        OPEN INSTAMOJO LINK <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+
+                <hr class="border-secondary">
+
+                <div>
+                    <p class="small mb-2"><span class="step-num">2</span> Submit Payment ID / UTR</p>
+                    <input type="text" id="utr-input" class="form-control bg-dark text-white border-secondary mb-2" placeholder="Payment ID">
+                    <button class="btn neon-btn-buy w-100 btn-sm" onclick="submitDeposit()">SUBMIT FOR APPROVAL</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. STATS VIEW -->
+        <section id="view-stats" class="view-section">
+            <h5 class="rajdhani neon-text mb-3">Operational Stats</h5>
+            <div class="row g-3">
+                <div class="col-6">
+                    <div class="glass-panel text-center">
+                        <small class="text-secondary d-block">Total Trades</small>
+                        <span class="h4 rajdhani" id="stat-total">0</span>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="glass-panel text-center">
+                        <small class="text-secondary d-block">Win Rate</small>
+                        <span class="h4 rajdhani text-success" id="stat-winrate">0%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-panel mt-3">
+                <p class="small text-secondary mb-2 text-uppercase">AI Analysis Log</p>
+                <div id="ai-log" class="small text-info" style="font-family: monospace;"></div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="mobile-nav">
+        <a href="#" class="nav-item active" onclick="switchView('trade', this)">
+            <i class="bi bi-graph-up"></i>Trade
+        </a>
+        <a href="#" class="nav-item" onclick="switchView('wallet', this)">
+            <i class="bi bi-wallet2"></i>Wallet
+        </a>
+        <a href="#" class="nav-item" onclick="switchView('stats', this)">
+            <i class="bi bi-cpu"></i>AI Pattern
+        </a>
+    </nav>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+    <script>
+        // --- APP STATE ---
+        let state = {
+            balance: 0,
+            price: 65420,
+            candles: [],
+            stats: { total: 0, wins: 0 },
+            tradeAmt: 100,
+            aiEnabled: false
+        };
+
+        // Firebase Simulation Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHZ4_PhE2gbJBDzipArubqJpHW88Alw5o",
+            authDomain: "tournament-62f77.firebaseapp.com",
+            databaseURL: "https://tournament-62f77-default-rtdb.firebaseio.com",
+            projectId: "tournament-62f77",
+            storageBucket: "tournament-62f77.firebasestorage.app",
+            messagingSenderId: "59905181993",
+            appId: "1:59905181993:web:8ad4f721ac50c09c478f38",
+            measurementId: "G-QHHJ1BJWMP"
+        };
+
+        // --- CORE LOGIC ---
+        window.onload = () => {
+            AOS.init();
+            setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 2000);
+            initChart();
+            updateMarket();
+        };
+
+        function switchView(viewId, el) {
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(`view-${viewId}`).classList.add('active');
+            el.classList.add('active');
+
+            if(viewId === 'stats') {
+                enableAI(); // Auto-trigger AI simulation when checking stats
+            }
+        }
+
+        // --- WALLET LOGIC ---
+        function setTradeAmt(val) {
+            state.tradeAmt = val;
+            notify(`Trade amount set: ₹${val}`);
+        }
+
+        function submitDeposit() {
+            const amt = document.getElementById('deposit-input').value;
+            const utr = document.getElementById('utr-input').value;
+            if(!amt || !utr) return alert("Please fill all steps.");
+
+            notify("Payment ID Submitted. Processing...");
+            
+            // Simulation: Auto-approve deposit in 5 seconds
+            setTimeout(() => {
+                state.balance += parseFloat(amt);
+                updateUI();
+                notify(`CREDIT CONFIRMED: +₹${amt}`, "success");
+            }, 5000);
+        }
+
+        // --- TRADING LOGIC ---
+        function executeOrder(direction) {
+            if(state.balance < state.tradeAmt) {
+                notify("Insufficient Credits! Please Top-up Wallet.", "danger");
+                return;
+            }
+
+            state.balance -= state.tradeAmt;
+            updateUI();
+
+            const entryPrice = state.price;
+            const orderId = Math.random().toString(36).substr(2, 9);
+            
+            const orderDiv = document.createElement('div');
+            orderDiv.className = 'glass-panel p-2 mb-2 d-flex justify-content-between align-items-center border-warning';
+            orderDiv.id = orderId;
+            orderDiv.innerHTML = `
+                <span><i class="bi bi-clock-history"></i> ${direction}</span>
+                <span class="text-warning">Running (10s)...</span>
+            `;
+            document.getElementById('active-orders').prepend(orderDiv);
+
+            // 10 Second Expiry
+            setTimeout(() => {
+                const exitPrice = state.price;
+                let isWin = false;
+                
+                if(direction === 'BUY' && exitPrice > entryPrice) isWin = true;
+                if(direction === 'SELL' && exitPrice < entryPrice) isWin = true;
+
+                // FORCE AI WIN LOGIC
+                if(state.aiEnabled) isWin = true;
+
+                orderDiv.remove();
+                resolveTrade(isWin, state.tradeAmt);
+            }, 10000);
+        }
+
+        function resolveTrade(win, amt) {
+            state.stats.total++;
+            if(win) {
+                const profit = amt * 1.85;
+                state.balance += profit;
+                state.stats.wins++;
+                notify(`TARGET HIT! +₹${profit.toFixed(2)}`, "success");
+            } else {
+                notify(`LOSS: -₹${amt}`, "danger");
+            }
+            updateUI();
+        }
+
+        // --- CHART ENGINE ---
+        const canvas = document.getElementById('mainChart');
+        const ctx = canvas.getContext('2d');
+
+        function initChart() {
+            for(let i=0; i<40; i++) {
+                addCandle();
+            }
+            setInterval(updateMarket, 1000);
+        }
+
+        function addCandle() {
+            const lastClose = state.candles.length > 0 ? state.candles[state.candles.length - 1].close : 65000;
+            const open = lastClose;
+            const close = open + (Math.random() - 0.5) * 30;
+            state.candles.push({
+                open, 
+                high: Math.max(open, close) + Math.random() * 10,
+                low: Math.min(open, close) - Math.random() * 10,
+                close
+            });
+            if(state.candles.length > 50) state.candles.shift();
+        }
+
+        function updateMarket() {
+            let bias = state.aiEnabled ? 8 : 0;
+            let move = (Math.random() - 0.5) * 15 + bias;
+            state.price += move;
+            
+            document.getElementById('live-price').innerText = state.price.toFixed(2);
+            document.getElementById('live-price').style.color = move >= 0 ? '#00ff55' : '#ff3333';
+
+            // Update current candle
+            let last = state.candles[state.candles.length-1];
+            last.close = state.price;
+            if(state.price > last.high) last.high = state.price;
+            if(state.price < last.low) last.low = state.price;
+
+            drawChart();
+        }
+
+        function drawChart() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            const candleW = canvas.width / state.candles.length;
+            const max = Math.max(...state.candles.map(c => c.high));
+            const min = Math.min(...state.candles.map(c => c.low));
+            const range = max - min;
+
+            state.candles.forEach((c, i) => {
+                const x = i * candleW;
+                const yOpen = canvas.height - ((c.open - min) / range) * canvas.height;
+                const yClose = canvas.height - ((c.close - min) / range) * canvas.height;
+                
+                ctx.strokeStyle = c.close >= c.open ? '#00ff55' : '#ff3333';
+                ctx.beginPath();
+                ctx.moveTo(x + candleW/2, canvas.height - ((c.high - min)/range)*canvas.height);
+                ctx.lineTo(x + candleW/2, canvas.height - ((c.low - min)/range)*canvas.height);
+                ctx.stroke();
+                
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fillRect(x+1, Math.min(yOpen, yClose), candleW-2, Math.abs(yOpen-yClose) || 1);
+            });
+        }
+
+        // --- UI HELPERS ---
+        function updateUI() {
+            document.getElementById('wallet-balance').innerText = `₹${state.balance.toFixed(2)}`;
+            document.getElementById('stat-total').innerText = state.stats.total;
+            const wr = state.stats.total > 0 ? ((state.stats.wins/state.stats.total)*100).toFixed(0) : 0;
+            document.getElementById('stat-winrate').innerText = `${wr}%`;
+        }
+
+        function notify(msg, type = "success") {
+            const badge = document.getElementById('ai-log');
+            const entry = document.createElement('div');
+            entry.className = `text-${type} mb-1`;
+            entry.innerText = `> ${msg}`;
+            badge.prepend(entry);
+        }
+
+        function enableAI() {
+            if(state.aiEnabled) return;
+            state.aiEnabled = true;
+            const badge = document.getElementById('ai-badge');
+            badge.classList.replace('text-secondary', 'text-success');
+            badge.classList.replace('border-secondary', 'border-success');
+            badge.innerHTML = `<i class="bi bi-cpu-fill"></i> AI: ACTIVE`;
+            notify("AI NEURAL LINK ESTABLISHED: BIAS DETECTED", "info");
+        }
+    </script>
+</body>
+</html>
